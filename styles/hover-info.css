@@ -1,0 +1,147 @@
+.cpr-hover-info-tooltip {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  user-select: none;
+  
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(255, 0, 0, 0.8);
+  border-radius: 8px;
+  padding: 12px;
+  
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  color: #00ff00;
+  
+  box-shadow: 
+    0 0 10px rgba(255, 0, 0, 0.3),
+    inset 0 0 10px rgba(0, 0, 0, 0.5);
+  
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.cpr-hover-info-tooltip.visible {
+  opacity: 1;
+}
+
+.cpr-hover-info-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #ff0000;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.cpr-hover-info-section {
+  margin: 6px 0;
+  line-height: 1.4;
+}
+
+.cpr-hover-info-section strong {
+  color: #ff0000;
+  text-transform: uppercase;
+}
+
+.cpr-hover-weapon-list {
+  margin-left: 10px;
+}
+
+.cpr-hover-weapon-item {
+  display: block;
+  padding: 2px 0;
+}
+
+.cpr-hover-weapon-item::before {
+  content: "▸ ";
+  color: #ff0000;
+}
+
+.cpr-hover-armor-status {
+  font-weight: bold;
+  text-shadow: 0 0 5px currentColor;
+}
+
+.cpr-hover-armor-status.heavily-armored {
+  color: #0099ff;
+}
+
+.cpr-hover-armor-status.armored {
+  color: #00ff00;
+}
+
+.cpr-hover-armor-status.lightly-armored {
+  color: #ffff00;
+}
+
+.cpr-hover-armor-condition {
+  font-style: italic;
+}
+
+.cpr-hover-armor-condition.pristine {
+  color: #00ff00;
+}
+
+.cpr-hover-armor-condition.damaged {
+  color: #ffff00;
+}
+
+.cpr-hover-armor-condition.heavily-damaged {
+  color: #ff9900;
+}
+
+.cpr-hover-armor-condition.critical {
+  color: #ff0000;
+}
+
+.cpr-hover-augmentations {
+  color: #9900ff;
+  font-style: italic;
+}
+
+.cpr-hover-info-tooltip::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 255, 0, 0.03) 0px,
+    transparent 1px,
+    transparent 2px,
+    rgba(0, 255, 0, 0.03) 3px
+  );
+  pointer-events: none;
+  border-radius: 8px;
+}
+
+.cpr-hover-info-tooltip.visible::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: transparent;
+  border-radius: 8px;
+  box-shadow: 
+    0 0 15px rgba(255, 0, 0, 0.4),
+    inset 0 0 15px rgba(0, 255, 0, 0.1);
+  pointer-events: none;
+  z-index: -1;
+}
+
+@media (max-width: 768px) {
+  .cpr-hover-info-tooltip {
+    font-size: 11px;
+    padding: 8px;
+    max-width: 250px;
+  }
+  
+  .cpr-hover-info-title {
+    font-size: 14px;
+  }
+}

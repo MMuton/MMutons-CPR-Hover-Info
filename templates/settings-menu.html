@@ -1,0 +1,70 @@
+<form class="cpr-hover-settings" style="position: relative !important;">
+  
+  <img src="modules/mmutons-cpr-hover-info/images/line.webp" 
+       data-line-toggle="showTargetLine"
+       style="position: absolute !important; left: 50% !important; top: 0 !important; transform: translateX(-50%) !important; width: 10px !important; height: 250px !important; z-index: 1 !important; transition: opacity 0.3s ease !important;" />
+  
+  <div style="display: grid !important; grid-template-columns: 1fr 200px 1fr !important; gap: 20px !important; align-items: center !important; margin-bottom: 20px !important;">
+    
+    <div style="display: flex !important; flex-direction: column !important; align-items: flex-end !important; gap: 4px !important;">
+      <label class="cpr-setting-row">Show Distance Display <input type="checkbox" name="showDistanceDisplay" {{checked showDistanceDisplay}} data-parent="true" /></label>
+      <label class="cpr-setting-row cpr-sub" data-requires="showDistanceDisplay">Only In Combat <input type="checkbox" name="distanceDisplayOnlyInCombat" {{checked distanceDisplayOnlyInCombat}} /></label>
+    </div>
+    
+    <div style="display: flex !important; justify-content: center !important;">
+      <img src="modules/mmutons-cpr-hover-info/images/distance.webp" 
+           data-default="modules/mmutons-cpr-hover-info/images/distance.webp"
+           data-toggle="showDistanceDisplay"
+           style="height: 60px !important; transition: opacity 0.3s ease !important; position: relative !important; z-index: 2 !important;" />
+    </div>
+    
+    <div style="display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 4px !important;">
+      <label class="cpr-setting-row"><input type="checkbox" name="showTargetLine" {{checked showTargetLine}} data-parent="true" /> Show Target Line</label>
+      <label class="cpr-setting-row cpr-sub" data-requires="showTargetLine"><input type="checkbox" name="targetLineOnlyInCombat" {{checked targetLineOnlyInCombat}} /> Only In Combat</label>
+    </div>
+    
+  </div>
+
+  <div style="display: grid !important; grid-template-columns: 1fr 200px 1fr !important; gap: 20px !important; align-items: center !important; margin-bottom: 20px !important;">
+    
+    <div style="display: flex !important; flex-direction: column !important; align-items: flex-end !important; gap: 8px !important; z-index: 10 !important; position: relative !important;">
+      <img src="modules/mmutons-cpr-hover-info/images/equipment.webp" 
+           data-default="modules/mmutons-cpr-hover-info/images/equipment.webp"
+           data-skill="modules/mmutons-cpr-hover-info/images/equipment-skill.webp"
+           data-toggle="showHoverInfo"
+           data-variant-setting="skillBasedInfo"
+           style="max-width: 280px !important; max-height: 140px !important; transition: opacity 0.3s ease !important;" />
+      <div style="display: flex !important; flex-direction: column !important; align-items: flex-end !important; gap: 4px !important;">
+        <label class="cpr-setting-row">Show Equipment Info <input type="checkbox" name="showHoverInfo" {{checked showHoverInfo}} data-parent="true" /></label>
+        <label class="cpr-setting-row cpr-sub" data-requires="showHoverInfo">Only in Combat <input type="checkbox" name="hoverInfoOnlyInCombat" {{checked hoverInfoOnlyInCombat}} /></label>
+        <label class="cpr-setting-row">Skill-Based Display <input type="checkbox" name="skillBasedInfo" {{checked skillBasedInfo}} /></label>
+      </div>
+    </div>
+
+    <div style="display: flex !important; justify-content: center !important; align-items: center !important; margin-top: -150px !important;">
+      <img src="modules/mmutons-cpr-hover-info/images/cyberman.webp" style="width: 200px !important; height: 200px !important; border-radius: 50% !important; position: relative !important; z-index: 2 !important;" />
+    </div>
+
+    <div style="display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; z-index: 10 !important; position: relative !important;">
+      <img src="modules/mmutons-cpr-hover-info/images/dv.webp" 
+           data-default="modules/mmutons-cpr-hover-info/images/dv.webp"
+           data-colorblind="modules/mmutons-cpr-hover-info/images/dv-colorblind.webp"
+           data-toggle="showDVDisplay"
+           data-variant-setting="colorblindMode"
+           style="max-width: 280px !important; max-height: 140px !important; transition: opacity 0.3s ease !important;" />
+      <div style="display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 4px !important;">
+        <label class="cpr-setting-row"><input type="checkbox" name="showDVDisplay" {{checked showDVDisplay}} data-parent="true" /> Show DV Display</label>
+        <label class="cpr-setting-row cpr-sub" data-requires="showDVDisplay"><input type="checkbox" name="dvDisplayOnlyInCombat" {{checked dvDisplayOnlyInCombat}} /> Only in Combat</label>
+        <label class="cpr-setting-row"><input type="checkbox" name="colorblindMode" {{checked colorblindMode}} /> Colorblind Mode</label>
+      </div>
+    </div>
+    
+  </div>
+
+  <div style="display: flex !important; justify-content: flex-end !important; padding-top: 15px !important; border-top: 1px solid #444 !important;">
+    <button type="submit" class="cpr-save-btn">
+      <i class="fas fa-save"></i> Save Settings
+    </button>
+  </div>
+  
+</form>

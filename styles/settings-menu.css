@@ -1,0 +1,96 @@
+#cpr-hover-settings-menu {
+  width: 950px !important;
+  height: auto !important;
+}
+
+#cpr-hover-settings-menu .window-content {
+  background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%) !important;
+  padding: 25px !important;
+}
+
+.cpr-hover-settings {
+  color: #e0e0e0;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 14px;
+}
+
+.cpr-setting-row {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  cursor: pointer;
+  padding: 6px 12px !important;
+  border-radius: 4px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  transition: all 0.2s ease !important;
+  color: #e0e0e0 !important;
+  font-size: 13px !important;
+}
+
+.cpr-setting-row:hover {
+  background: rgba(255, 0, 0, 0.1) !important;
+  border-color: rgba(255, 0, 0, 0.3) !important;
+}
+
+.cpr-setting-row.cpr-sub {
+  font-size: 11px !important;
+  color: #999 !important;
+  font-style: italic;
+  padding: 4px 10px !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+.cpr-setting-row.cpr-disabled {
+  opacity: 0.3 !important;
+  pointer-events: none !important;
+}
+
+.cpr-hover-settings input[type="checkbox"] {
+  width: 18px !important;
+  height: 18px !important;
+  margin: 0 !important;
+  accent-color: #ff0000;
+  cursor: pointer;
+  border-radius: 3px !important;
+}
+
+.cpr-hover-settings img {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.cpr-hover-settings img[data-toggle] {
+  transition: opacity 0.3s ease !important;
+  border-radius: 8px !important;
+}
+
+.cpr-hover-settings img.cpr-faded {
+  opacity: 0.15 !important;
+}
+
+.cpr-hover-settings img.cpr-fade-transition {
+  opacity: 0 !important;
+  transition: opacity 0.15s ease !important;
+}
+
+.cpr-save-btn {
+  background: #cc0000 !important;
+  border: 1px solid #aa0000 !important;
+  color: white !important;
+  padding: 12px 30px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  font-size: 14px !important;
+  font-weight: bold !important;
+  display: inline-flex !important;
+  flex-direction: row-reverse !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+}
+
+.cpr-save-btn:hover {
+  background: #dd0000 !important;
+}

@@ -1,0 +1,44 @@
+{
+  "id": "mmutons-cpr-hover-info",
+  "title": "MMuton's Cyberpunk RED Hover Info",
+  "description": "Displays weapon, armor and DV information when hovering over tokens",
+  "author": "MMuton",
+  "version": "1.0.0",
+  "packs": [
+    {
+      "name": "soldier-of-fortune-dv-table",
+      "label": "Soldier of Fortune DV Table",
+      "path": "packs/soldier-of-fortune-dv-table",
+      "type": "Macro"
+    }
+  ],
+  "url": "https://github.com/MMuton/MMutons-CPR-Hover-Info",
+  "manifest": "https://raw.githubusercontent.com/MMuton/MMutons-CPR-Hover-Info/main/module.json",
+  "download": "https://github.com/MMuton/MMutons-CPR-Hover-Info/archive/refs/heads/main.zip",
+  "compatibility": {
+    "minimum": "11",
+    "verified": "12",
+    "maximum": "12"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "cyberpunk-red-core",
+        "type": "system",
+        "compatibility": {
+          "minimum": "0.88.0"
+        }
+      }
+    ],
+    "requires": [
+      {
+        "id": "lib-wrapper",
+        "type": "module",
+        "compatibility": {}
+      }
+    ]
+  },
+  "esmodules": ["scripts/hover-info.js"],
+  "styles": ["styles/hover-info.css", "styles/settings-menu.css"],
+  "languages": []
+}
