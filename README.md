@@ -75,7 +75,8 @@ No known issues at this time.
 
 ## Credits
 
-All files in the icons folder are from game-icons.net
+* I've based the DV Display code off of [Diwako's Cyberpunk Red - Core Additions](https://github.com/diwako/foundry-cyberpunk-red-core-additions/tree/master) (with his permission), it wouldn't be where it is today without his code being the foundation!
+* All files in the icons folder are from game-icons.net
 
 ## Disclaimer
 
