@@ -37,7 +37,7 @@
       <div style="display: flex !important; flex-direction: column !important; align-items: flex-end !important; gap: 4px !important;">
         <label class="cpr-setting-row">Show Equipment Info <input type="checkbox" name="showHoverInfo" {{checked showHoverInfo}} data-parent="true" /></label>
         <label class="cpr-setting-row cpr-sub" data-requires="showHoverInfo">Only in Combat <input type="checkbox" name="hoverInfoOnlyInCombat" {{checked hoverInfoOnlyInCombat}} /></label>
-        <label class="cpr-setting-row">Skill-Based Display <input type="checkbox" name="skillBasedInfo" {{checked skillBasedInfo}} /></label>
+        <label class="cpr-setting-row {{#unless isGM}}cpr-disabled{{/unless}}" title="{{#unless isGM}}GM only{{/unless}}">Skill-Based Display <input type="checkbox" name="skillBasedInfo" {{checked skillBasedInfo}} {{#unless isGM}}disabled{{/unless}} /></label>
       </div>
     </div>
 
