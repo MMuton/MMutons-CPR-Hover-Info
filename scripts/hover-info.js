@@ -23,7 +23,8 @@ class CPRHoverSettingsMenu extends FormApplication {
       showTargetLine: game.settings.get(id, "showTargetLine"),
       targetLineOnlyInCombat: game.settings.get(id, "targetLineOnlyInCombat"),
       skillBasedInfo: game.settings.get(id, "skillBasedInfo"),
-      colorblindMode: game.settings.get(id, "colorblindMode")
+      colorblindMode: game.settings.get(id, "colorblindMode"),
+      isGM: game.user.isGM
     };
   }
 
@@ -214,7 +215,7 @@ class CPRHoverInfo {
     });
 
     game.settings.register(this.ID, "skillBasedInfo", {
-      scope: "client",
+      scope: "world",
       config: false,
       type: Boolean,
       default: true
