@@ -323,7 +323,7 @@ class CPRHoverInfo {
     }
     this.equipmentDisplay?.removeChildren()?.forEach(c => c.destroy({ children: true }));
 
-    const observer = canvas.tokens.controlled[0]?.actor || null;
+    const observer = canvas.tokens.controlled[0]?.actor || game.user.character || null;
     const data = CPRHoverInfo.gatherActorData(this.actor, observer);
     
     if (data.weapons.length === 0 && !data.armorStatus) {
