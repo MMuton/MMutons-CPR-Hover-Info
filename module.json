@@ -3,7 +3,7 @@
   "title": "MMuton's Cyberpunk RED Hover Info",
   "description": "Displays weapon, armor and DV information when hovering over tokens",
   "author": "MMuton",
-  "version": "1.1",
+  "version": "1.1.1",
   "packs": [
     {
       "name": "soldier-of-fortune-dv-table",
