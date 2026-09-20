@@ -5,7 +5,7 @@ class CPRHoverSettingsMenu extends FormApplication {
       title: "Hover Info Settings",
       template: "modules/mmutons-cpr-hover-info/templates/settings-menu.html",
       classes: ["cpr-hover-settings-menu"],
-      width: 850,
+      width: 950,
       height: "auto",
       resizable: true
     });
@@ -120,10 +120,12 @@ class CPRHoverInfo {
   static activeAnimations = new Map();
   static settingsCache = null;
   static exclusionCache = null;
-  static textStyles = null;
   static iconTextures = new Map();
   static currentHoveredTokenId = null;
   static targetLine = null;
+  static FONT = "CPRHoverInfoTektur";
+  static fontReady = false;
+  static overlay = null;
 
   static VALID_SINGLE_SHOT_TABLES = [
     "Pistol", "Snubnose Pistol", "Long Barrel Pistol",
@@ -290,184 +292,194 @@ class CPRHoverInfo {
     });
   }
 
-  static async initializeTokenDisplays(wrapped, ...args) {
-    await wrapped(...args);
-    
-    this.equipmentDisplay = this.addChild(new PIXI.Container());
-    this.dvDisplay = this.addChild(new PIXI.Container());
-    this.distanceDisplay = this.addChild(new PIXI.Container());
-    
-    this.equipmentDisplay.zIndex = 1000;
-    this.dvDisplay.zIndex = 1000;
-    this.distanceDisplay.zIndex = 1000;
-    
-    this._hoverInfoInitialized = true;
-    
-    return this;
+  static async initFont() {
+    if (this.fontReady) return;
+    try {
+      if (document.fonts?.load) {
+        await document.fonts.load('26px Tektur');
+        await document.fonts.ready;
+      }
+      PIXI.BitmapFont.from(this.FONT, { fontFamily: "Tektur", fontSize: 64, fill: 0xFFFFFF }, { chars: PIXI.BitmapFont.ASCII });
+      this.fontReady = true;
+    } catch (e) {
+      console.warn(`${this.ID} | Failed to generate bitmap font:`, e);
+    }
   }
 
-  static async showEquipmentInfo() {
-    const settings = CPRHoverInfo.getSettings();
+  static ensureOverlay() {
+    if (!this.overlay || this.overlay.destroyed || !this.overlay.parent) {
+      this.createOverlay();
+    }
+  }
+
+  static createOverlay() {
+    if (this.overlay && !this.overlay.destroyed) {
+      this.overlay.destroy({ children: true });
+    }
+    this.overlay = new PIXI.Container();
+    this.overlay.eventMode = "none";
+    this.overlay.interactiveChildren = false;
+    const layer = canvas.controls ?? canvas.interface ?? canvas.stage;
+    layer.addChild(this.overlay);
+  }
+
+  static clearOverlay() {
+    this.activeAnimations.forEach(anims => anims.forEach(a => canvas.app.ticker.remove(a)));
+    this.activeAnimations.clear();
+    if (this.overlay && !this.overlay.destroyed) {
+      this.overlay.removeChildren().forEach(c => c.destroy({ children: true }));
+    }
+  }
+
+  static async showEquipmentInfo(token) {
+    const settings = this.getSettings();
     const inCombat = game.combat?.started || false;
-    
+
     if (!settings.showHoverInfo || (settings.hoverInfoOnlyInCombat && !inCombat)) {
       return;
     }
 
-    if (CPRHoverInfo.isTokenHidden(this)) {
+    if (this.isTokenHidden(token)) {
       return;
     }
 
-    if (!this.actor) {
+    if (!token.actor) {
       return;
     }
-    this.equipmentDisplay?.removeChildren()?.forEach(c => c.destroy({ children: true }));
 
     const observer = canvas.tokens.controlled[0]?.actor || game.user.character || null;
-    const data = CPRHoverInfo.gatherActorData(this.actor, observer);
-    
+    const data = this.gatherActorData(token.actor, observer);
+
     if (data.weapons.length === 0 && !data.armorStatus) {
       return;
     }
-    
-    const panel = CPRHoverInfo.createInfoPanel(data);
-    
-    const yOffset = (this.h - panel.height) / 2;
-    panel.position.set(-panel.width - 15, yOffset);
-    
+
+    if (this.currentHoveredTokenId !== token.id || !this.overlay || this.overlay.destroyed) {
+      return;
+    }
+
+    const panel = this.createInfoPanel(data);
+
+    const scale = this.getGridScale();
+    const unscaledWidth = panel.width;
+    const unscaledHeight = panel.height;
+    panel.scale.set(scale);
+
+    const scaledWidth = unscaledWidth * scale;
+    const scaledHeight = unscaledHeight * scale;
+    const gap = Math.max(10, 15 * scale);
+    const yOffset = (token.h - scaledHeight) / 2;
+    panel.position.set(token.x - scaledWidth - gap, token.y + yOffset);
+
     if (settings.enableFadeIn) {
       panel.alpha = 0;
-      CPRHoverInfo.fadeIn(panel, this.id);
+      this.fadeIn(panel, token.id);
     }
-    
-    this.equipmentDisplay.addChild(panel);
+
+    this.overlay.addChild(panel);
   }
 
-  static async showDVInfo() {
-    const settings = CPRHoverInfo.getSettings();
+  static async showDVInfo(token, controlled, distance) {
+    const settings = this.getSettings();
     const inCombat = game.combat?.started || false;
-    
+
     if (!settings.showDVDisplay || (settings.dvDisplayOnlyInCombat && !inCombat)) {
       return;
     }
 
-    if (CPRHoverInfo.isTokenHidden(this)) {
+    if (this.isTokenHidden(token)) {
       return;
     }
 
-    const controlled = canvas.tokens.controlled[0];
-    if (!controlled || controlled.id === this.id) {
+    if (!controlled || controlled.id === token.id) {
       return;
     }
 
-    if (!this.actor) {
+    if (!token.actor) {
       return;
     }
 
-    this.dvDisplay?.removeChildren()?.forEach(c => c.destroy({ children: true }));
+    const tokenId = token.id;
 
-    const tokenId = this.id;
-
-    if (CPRHoverInfo.currentHoveredTokenId !== tokenId) {
+    if (this.currentHoveredTokenId !== tokenId) {
       return;
     }
 
-    const distance = CPRHoverInfo.getDistance(controlled, this);
-    
-    const dvData = await CPRHoverInfo.gatherDVData(controlled.actor, distance);
-    
-    const token = canvas.tokens?.get(tokenId);
-    if (!token?._hoverInfoInitialized || !token.dvDisplay?.parent) {
+    const dvData = await this.gatherDVData(controlled.actor, distance);
+
+    if (this.currentHoveredTokenId !== tokenId || !this.overlay || this.overlay.destroyed) {
       return;
     }
-    
-    if (CPRHoverInfo.currentHoveredTokenId !== tokenId) {
-      return;
-    }
-    
+
     if (!dvData || dvData.length === 0) {
       return;
     }
 
-    const panel = CPRHoverInfo.createDVPanel(dvData);
-    
-    const yOffset = (token.h - panel.height) / 2;
-    panel.position.set(token.w + 15, yOffset);
-    
-    if (CPRHoverInfo.getSettings().enableFadeIn) {
+    const panel = this.createDVPanel(dvData);
+
+    const scale = this.getGridScale();
+    const unscaledHeight = panel.height;
+    panel.scale.set(scale);
+
+    const scaledHeight = unscaledHeight * scale;
+    const gap = Math.max(10, 15 * scale);
+    const yOffset = (token.h - scaledHeight) / 2;
+    panel.position.set(token.x + token.w + gap, token.y + yOffset);
+
+    if (settings.enableFadeIn) {
       panel.alpha = 0;
-      CPRHoverInfo.fadeIn(panel, tokenId);
+      this.fadeIn(panel, tokenId);
     }
-    
-    token.dvDisplay.addChild(panel);
+
+    this.overlay.addChild(panel);
   }
 
-  static async showDistanceInfo() {
-    const settings = CPRHoverInfo.getSettings();
+  static async showDistanceInfo(token, controlled, distance) {
+    const settings = this.getSettings();
     const inCombat = game.combat?.started || false;
-    
+
     if (!settings.showDistanceDisplay || (settings.distanceDisplayOnlyInCombat && !inCombat)) {
       return;
     }
 
-    if (CPRHoverInfo.isTokenHidden(this)) {
+    if (this.isTokenHidden(token)) {
       return;
     }
 
-    const controlled = canvas.tokens.controlled[0];
-    if (!controlled || controlled.id === this.id) {
+    if (!controlled || controlled.id === token.id) {
       return;
     }
 
-    this.distanceDisplay?.removeChildren()?.forEach(c => c.destroy({ children: true }));
-
-    const tokenId = this.id;
-    const distance = CPRHoverInfo.getDistance(controlled, this);
-    
-    const token = canvas.tokens?.get(tokenId);
-    if (!token?._hoverInfoInitialized || !token.distanceDisplay?.parent) {
+    if (this.currentHoveredTokenId !== token.id || !this.overlay || this.overlay.destroyed) {
       return;
     }
-    
-    const panel = CPRHoverInfo.createDistancePanel(distance);
-    
-    panel.position.set((token.w - panel.width) / 2, -65);
-    
+
+    const panel = this.createDistancePanel(distance);
+
+    const scale = this.getGridScale();
+    const unscaledWidth = panel.width;
+    panel.scale.set(scale);
+
+    const scaledWidth = unscaledWidth * scale;
+    panel.position.set(token.x + (token.w - scaledWidth) / 2, token.y - 65 * scale);
+
     if (settings.enableFadeIn) {
       panel.alpha = 0;
-      CPRHoverInfo.fadeIn(panel, tokenId);
+      this.fadeIn(panel, token.id);
     }
-    
-    token.distanceDisplay.addChild(panel);
-  }
 
-  static clearAllDisplays() {
-    CPRHoverInfo.cancelAnimations(this.id);
-
-    this.equipmentDisplay?.removeChildren()?.forEach(c => c.destroy({ children: true }));
-    this.dvDisplay?.removeChildren()?.forEach(c => c.destroy({ children: true }));
-    this.distanceDisplay?.removeChildren()?.forEach(c => c.destroy({ children: true }));
-  }
-
-  static clearTokenDisplaysById(tokenId) {
-    if (!tokenId) return;
-    
-    const token = canvas.tokens?.get(tokenId);
-    if (token?._hoverInfoInitialized) {
-      token.clearAllDisplays?.();
-    }
+    this.overlay.addChild(panel);
   }
 
   static handleHoverStart(tokenId) {
-    if (this.currentHoveredTokenId && this.currentHoveredTokenId !== tokenId) {
-      this.clearTokenDisplaysById(this.currentHoveredTokenId);
-    }
+    this.ensureOverlay();
+    this.clearOverlay();
     this.currentHoveredTokenId = tokenId;
   }
 
   static handleHoverEnd(tokenId) {
     if (this.currentHoveredTokenId === tokenId) {
-      this.clearTokenDisplaysById(tokenId);
+      this.clearOverlay();
       this.clearTargetLine();
       this.currentHoveredTokenId = null;
     }
@@ -566,6 +578,12 @@ class CPRHoverInfo {
     }
     
     return { singleShot, autofire };
+  }
+
+  static getGridScale() {
+    const baseGridSize = 256;
+    const currentGridSize = canvas.grid.size || baseGridSize;
+    return Math.max(0.15, Math.min(1.5, currentGridSize / baseGridSize));
   }
 
   static getWeaponSizeCategory(weapon) {
@@ -721,103 +739,18 @@ class CPRHoverInfo {
     return this.exclusionCache;
   }
 
-  static getDVColor(dv) {
+  static getDVTint(dv) {
+    const settings = this.getSettings();
+    if (settings.colorblindMode) {
+      if (dv <= 13) return 0xFFFFFF;
+      if (dv <= 15) return 0x44FF00;
+      if (dv <= 17) return 0x0600C1;
+      return 0x3DBEFF;
+    }
     if (dv <= 13) return 0x00FF00;
-    if (dv <= 15) return 0xADFF2F;
+    if (dv <= 15) return 0xCEFF2E;
     if (dv <= 17) return 0xFFA500;
     return 0xFF0000;
-  }
-
-  static getTextStyles() {
-    if (!this.textStyles) {
-      this.textStyles = {
-        equipment: new PIXI.TextStyle({
-          fontFamily: 'Tektur, Arial, sans-serif',
-          fontSize: 26,
-          fill: 0xFFFFFF,
-          align: 'left'
-        }),
-        distance: new PIXI.TextStyle({
-          fontFamily: 'Tektur, Arial, sans-serif',
-          fontSize: 22,
-          fill: 0xFFFFFF,
-          align: 'center',
-          fontWeight: 'bold'
-        }),
-        dvName: new PIXI.TextStyle({
-          fontFamily: 'Tektur, Arial, sans-serif',
-          fontSize: 24,
-          fill: 0xFFFFFF,
-          align: 'left'
-        }),
-        dvGreen: new PIXI.TextStyle({
-          fontFamily: 'Tektur, Arial, sans-serif',
-          fontSize: 24,
-          fill: 0x00FF00,
-          align: 'left'
-        }),
-        dvLime: new PIXI.TextStyle({
-          fontFamily: 'Tektur, Arial, sans-serif',
-          fontSize: 24,
-          fill: 0xCEFF2E,
-          align: 'left'
-        }),
-        dvOrange: new PIXI.TextStyle({
-          fontFamily: 'Tektur, Arial, sans-serif',
-          fontSize: 24,
-          fill: 0xFFA500,
-          align: 'left'
-        }),
-        dvRed: new PIXI.TextStyle({
-          fontFamily: 'Tektur, Arial, sans-serif',
-          fontSize: 24,
-          fill: 0xFF0000,
-          align: 'left'
-        }),
-        dvColorblind1: new PIXI.TextStyle({
-          fontFamily: 'Tektur, Arial, sans-serif',
-          fontSize: 24,
-          fill: 0xFFFFFF,
-          align: 'left'
-        }),
-        dvColorblind2: new PIXI.TextStyle({
-          fontFamily: 'Tektur, Arial, sans-serif',
-          fontSize: 24,
-          fill: 0x44FF00,
-          align: 'left'
-        }),
-        dvColorblind3: new PIXI.TextStyle({
-          fontFamily: 'Tektur, Arial, sans-serif',
-          fontSize: 24,
-          fill: 0x0600C1,
-          align: 'left'
-        }),
-        dvColorblind4: new PIXI.TextStyle({
-          fontFamily: 'Tektur, Arial, sans-serif',
-          fontSize: 24,
-          fill: 0x3DBEFF,
-          align: 'left'
-        })
-      };
-    }
-    return this.textStyles;
-  }
-
-  static getDVStyle(dv) {
-    const styles = this.getTextStyles();
-    const settings = this.getSettings();
-    
-    if (settings.colorblindMode) {
-      if (dv <= 13) return styles.dvColorblind1;
-      if (dv <= 15) return styles.dvColorblind2;
-      if (dv <= 17) return styles.dvColorblind3;
-      return styles.dvColorblind4;
-    } else {
-      if (dv <= 13) return styles.dvGreen;
-      if (dv <= 15) return styles.dvLime;
-      if (dv <= 17) return styles.dvOrange;
-      return styles.dvRed;
-    }
   }
 
   static getIconTexture(iconPath) {
@@ -828,28 +761,9 @@ class CPRHoverInfo {
     return this.iconTextures.get(iconPath);
   }
 
-  static truncateText(text, maxWidth, style) {
-    const tempText = new PIXI.Text(text, style);
-
-    if (tempText.width <= maxWidth) {
-      tempText.destroy();
-      return text;
-    }
-
-    let truncated = text;
-    while (tempText.width > maxWidth && truncated.length > 3) {
-      truncated = truncated.slice(0, -4) + '...';
-      tempText.text = truncated;
-    }
-    
-    tempText.destroy();
-    return truncated;
-  }
-
   static invalidateSettingsCache() {
     this.settingsCache = null;
     this.exclusionCache = null;
-    this.textStyles = null;
   }
   
   static async checkDiwakoConflict() {
@@ -925,7 +839,6 @@ class CPRHoverInfo {
     this.iconTextures.clear();
     this.settingsCache = null;
     this.exclusionCache = null;
-    this.textStyles = null;
     console.log(`${this.ID} | Module cleanup complete`);
   }
 
@@ -1236,18 +1149,50 @@ class CPRHoverInfo {
   }
 
   static createInfoPanel(data) {
-    const panel = new PIXI.Container();
-    const lineHeight = 36;
     const padding = 12;
     const iconSize = 30;
     const iconPad = 4;
-    const width = 400;
+    const rowGap = 6;
+    const minWidth = 200;
+    const maxWidth = 500;
+    const fontSize = 26;
+    const textMax = maxWidth - padding * 2 - iconSize - iconPad;
 
-	let lines = 0;
-	if (data.weapons.length > 0) lines++;
-	if (data.armorStatus && data.armorCondition) lines++;
+    const rows = [];
 
-    const height = padding + (lines * lineHeight) + padding;
+    if (data.weapons.length > 0) {
+      let iconPath = "modules/mmutons-cpr-hover-info/icons/gun.svg";
+      if (data.weaponType === "melee") {
+        iconPath = "modules/mmutons-cpr-hover-info/icons/melee.svg";
+      } else if (data.weaponType === "both") {
+        iconPath = "modules/mmutons-cpr-hover-info/icons/both.svg";
+      }
+
+      data.weapons.forEach((name, i) => {
+        const text = new PIXI.BitmapText(name, { fontName: this.FONT, fontSize });
+        text.maxWidth = textMax;
+        rows.push({ icon: i === 0 ? iconPath : null, text });
+      });
+    }
+
+    if (data.armorStatus && data.armorCondition) {
+      const text = new PIXI.BitmapText(`${data.armorCondition} ${data.armorStatus}`, { fontName: this.FONT, fontSize });
+      text.maxWidth = textMax;
+      rows.push({ icon: "modules/mmutons-cpr-hover-info/icons/armor.svg", text });
+    }
+
+    let contentWidth = 0;
+    let height = padding;
+    rows.forEach(row => {
+      contentWidth = Math.max(contentWidth, row.text.width);
+      row.height = Math.max(iconSize, row.text.height);
+      height += row.height + rowGap;
+    });
+    height = height - rowGap + padding;
+
+    const width = Math.min(maxWidth, Math.max(minWidth, contentWidth + padding * 2 + iconSize + iconPad));
+
+    const panel = new PIXI.Container();
 
     const bg = new PIXI.Graphics();
     bg.beginFill(0x000000, 0.50);
@@ -1255,65 +1200,49 @@ class CPRHoverInfo {
     bg.endFill();
     panel.addChild(bg);
 
-    const style = this.getTextStyles().equipment;
-
     let y = padding;
-
-	if (data.weapons.length > 0) {
-	  let iconPath = "modules/mmutons-cpr-hover-info/icons/gun.svg";
-	  if (data.weaponType === "melee") {
-	    iconPath = "modules/mmutons-cpr-hover-info/icons/melee.svg";
-	  } else if (data.weaponType === "both") {
-	    iconPath = "modules/mmutons-cpr-hover-info/icons/both.svg";
-	  }
-	  
-	  const iconTexture = this.getIconTexture(iconPath);
-	  if (iconTexture) {
-		const icon = new PIXI.Sprite(iconTexture);
-		icon.width = icon.height = iconSize;
-		icon.position.set(padding, y + (lineHeight - iconSize) / 2);
-		panel.addChild(icon);
-	  }
-
-	  const maxTextWidth = width - padding * 2 - iconSize - iconPad;
-	  const weaponText = data.weapons.join(', ');
-	  const displayText = this.truncateText(weaponText, maxTextWidth, style);
-	  
-	  const text = new PIXI.Text(displayText, style);
-	  const textOffset = (lineHeight - 26) / 2;
-	  text.position.set(padding + iconSize + iconPad, y + textOffset);
-	  panel.addChild(text);
-	  y += lineHeight;
-	}
-
-    if (data.armorStatus && data.armorCondition) {
-      const iconTexture = this.getIconTexture("modules/mmutons-cpr-hover-info/icons/armor.svg");
-      if (iconTexture) {
-        const icon = new PIXI.Sprite(iconTexture);
-        icon.width = icon.height = iconSize;
-        icon.position.set(padding, y + (lineHeight - iconSize) / 2);
-        panel.addChild(icon);
+    rows.forEach(row => {
+      if (row.icon) {
+        const texture = this.getIconTexture(row.icon);
+        if (texture) {
+          const icon = new PIXI.Sprite(texture);
+          icon.width = icon.height = iconSize;
+          icon.position.set(padding, y + (row.height - iconSize) / 2);
+          panel.addChild(icon);
+        }
       }
 
-      const maxTextWidth = width - padding * 2 - iconSize - iconPad;
-      const armorText = `${data.armorCondition} ${data.armorStatus}`;
-      const displayText = this.truncateText(armorText, maxTextWidth, style);
+      row.text.position.set(padding + iconSize + iconPad, y + (row.height - row.text.height) / 2);
+      panel.addChild(row.text);
 
-      const text = new PIXI.Text(displayText, style);
-      const textOffset = (lineHeight - 27) / 2;
-      text.position.set(padding + iconSize + iconPad, y + textOffset);
-      panel.addChild(text);
-    }
+      y += row.height + rowGap;
+    });
 
     return panel;
   }
 
   static createDVPanel(dvData) {
-    const panel = new PIXI.Container();
-    const lineHeight = 36;
     const padding = 12;
-    const width = 350;
-    const height = padding + (dvData.length * lineHeight) + padding;
+    const lineHeight = 36;
+    const minWidth = 200;
+    const nameFont = 24;
+
+    const rows = dvData.map(w => {
+      const nameText = new PIXI.BitmapText(`${w.name}: DV `, { fontName: this.FONT, fontSize: nameFont });
+      const dvText = new PIXI.BitmapText(`${w.dv}`, { fontName: this.FONT, fontSize: nameFont });
+      dvText.tint = this.getDVTint(w.dv);
+      return { nameText, dvText };
+    });
+
+    let contentWidth = 0;
+    rows.forEach(row => {
+      contentWidth = Math.max(contentWidth, row.nameText.width + row.dvText.width);
+    });
+
+    const width = Math.max(minWidth, contentWidth + padding * 2);
+    const height = padding + (rows.length * lineHeight) + padding;
+
+    const panel = new PIXI.Container();
 
     const bg = new PIXI.Graphics();
     bg.beginFill(0x000000, 0.50);
@@ -1321,26 +1250,13 @@ class CPRHoverInfo {
     bg.endFill();
     panel.addChild(bg);
 
-    const styles = this.getTextStyles();
-
     let y = padding;
-    dvData.forEach(w => {
-      const textOffset = (lineHeight - 24) / 2;
-      
-      const dvNumWidth = 50;
-      const labelWidth = 50;
-      const maxNameWidth = width - padding * 2 - labelWidth - dvNumWidth;
-      
-      const truncatedName = this.truncateText(w.name, maxNameWidth, styles.dvName);
-      
-      const nameText = new PIXI.Text(`${truncatedName}: DV `, styles.dvName);
-      nameText.position.set(padding, y + textOffset);
-      panel.addChild(nameText);
+    rows.forEach(row => {
+      row.nameText.position.set(padding, y + (lineHeight - row.nameText.height) / 2);
+      panel.addChild(row.nameText);
 
-      const dvStyle = this.getDVStyle(w.dv);
-      const dvText = new PIXI.Text(`${w.dv}`, dvStyle);
-      dvText.position.set(padding + nameText.width, y + textOffset);
-      panel.addChild(dvText);
+      row.dvText.position.set(padding + row.nameText.width, y + (lineHeight - row.dvText.height) / 2);
+      panel.addChild(row.dvText);
 
       y += lineHeight;
     });
@@ -1349,14 +1265,14 @@ class CPRHoverInfo {
   }
 
   static createDistancePanel(distance) {
-    const panel = new PIXI.Container();
     const padding = 8;
     const height = 32;
-    
-    const style = this.getTextStyles().distance;
+    const units = canvas.scene?.grid?.units || "";
 
-    const text = new PIXI.Text(`${distance}m`, style);
+    const text = new PIXI.BitmapText(`${distance}${units}`, { fontName: this.FONT, fontSize: 22 });
     const width = text.width + (padding * 2);
+
+    const panel = new PIXI.Container();
 
     const bg = new PIXI.Graphics();
     bg.beginFill(0x000000, 0.50);
@@ -1364,7 +1280,7 @@ class CPRHoverInfo {
     bg.endFill();
     panel.addChild(bg);
 
-    text.position.set(padding, padding / 2);
+    text.position.set(padding, (height - text.height) / 2);
     panel.addChild(text);
 
     return panel;
@@ -1373,25 +1289,6 @@ class CPRHoverInfo {
 
 Hooks.once("init", () => {
   CPRHoverInfo.registerSettings();
-
-  if (typeof libWrapper !== 'function') {
-    console.error(`${CPRHoverInfo.ID} | libWrapper is required but not loaded. Please install libWrapper module.`);
-    ui.notifications.error("MMuton's Cyberpunk RED Hover Info requires the libWrapper module. Please install it from the module browser.");
-    return;
-  }
-
-  libWrapper.register(
-    CPRHoverInfo.ID,
-    "Token.prototype.draw",
-    CPRHoverInfo.initializeTokenDisplays,
-    "WRAPPER"
-  );
-
-  Token.prototype.showEquipmentInfo = CPRHoverInfo.showEquipmentInfo;
-  Token.prototype.showDVInfo = CPRHoverInfo.showDVInfo;
-  Token.prototype.showDistanceInfo = CPRHoverInfo.showDistanceInfo;
-  Token.prototype.clearAllDisplays = CPRHoverInfo.clearAllDisplays;
-  
   console.log(`${CPRHoverInfo.ID} | Module initialized successfully`);
 });
 
@@ -1400,16 +1297,18 @@ Hooks.on("hoverToken", (token, hovered) => {
     CPRHoverInfo.handleHoverStart(token.id);
 
     const tokenObj = canvas.tokens?.get(token.id);
+    if (!tokenObj) return;
+
     const controlled = canvas.tokens.controlled[0];
-    
-    if (tokenObj) {
-      tokenObj.showEquipmentInfo();
-      tokenObj.showDVInfo();
-      tokenObj.showDistanceInfo();
-      
-      if (controlled && controlled.id !== token.id) {
-        CPRHoverInfo.drawTargetLine(controlled, tokenObj);
-      }
+    const hasTarget = controlled && controlled.id !== token.id;
+    const distance = hasTarget ? CPRHoverInfo.getDistance(controlled, tokenObj) : null;
+
+    CPRHoverInfo.showEquipmentInfo(tokenObj);
+    CPRHoverInfo.showDVInfo(tokenObj, controlled, distance);
+    CPRHoverInfo.showDistanceInfo(tokenObj, controlled, distance);
+
+    if (hasTarget) {
+      CPRHoverInfo.drawTargetLine(controlled, tokenObj);
     }
   } else {
     CPRHoverInfo.handleHoverEnd(token.id);
@@ -1417,26 +1316,32 @@ Hooks.on("hoverToken", (token, hovered) => {
 });
 
 Hooks.on("controlToken", (token, _) => {
-  CPRHoverInfo.handleHoverEnd(token.id);
+  CPRHoverInfo.clearOverlay();
+  CPRHoverInfo.clearTargetLine();
+  CPRHoverInfo.currentHoveredTokenId = null;
 });
 
 Hooks.on("deleteToken", (tokenDocument, options, userId) => {
-  CPRHoverInfo.cancelAnimations(tokenDocument.id);
   if (CPRHoverInfo.currentHoveredTokenId === tokenDocument.id) {
+    CPRHoverInfo.clearOverlay();
+    CPRHoverInfo.clearTargetLine();
     CPRHoverInfo.currentHoveredTokenId = null;
   }
 });
 
-Hooks.once("ready", () => {
+Hooks.once("ready", async () => {
+  await CPRHoverInfo.initFont();
   CPRHoverInfo.checkDiwakoConflict();
 });
 
 Hooks.on("canvasReady", (canvas) => {
   CPRHoverInfo.cleanupAllAnimations();
-  
+  CPRHoverInfo.createOverlay();
+
   canvas.stage?.on("pointerleave", () => {
     if (CPRHoverInfo.currentHoveredTokenId) {
-      CPRHoverInfo.clearTokenDisplaysById(CPRHoverInfo.currentHoveredTokenId);
+      CPRHoverInfo.clearOverlay();
+      CPRHoverInfo.clearTargetLine();
       CPRHoverInfo.currentHoveredTokenId = null;
     }
   });
