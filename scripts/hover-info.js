@@ -255,6 +255,27 @@ class CPRHoverInfo {
       default: true
     });
     
+    game.settings.register(this.ID, "globalScale", {
+      name: "Global Hover Info Scale",
+      hint: "Scales all hover info displays (equipment, DV, distance) up or down. 1.0 is default.",
+      scope: "client",
+      config: true,
+      type: Number,
+      range: { min: 0.25, max: 5, step: 0.05 },
+      default: 1,
+      onChange: () => CPRHoverInfo.invalidateSettingsCache()
+    });
+
+    game.settings.register(this.ID, "zoomScale", {
+      name: "Enlarge When Zoomed Out",
+      hint: "Automatically increases hover info size as you zoom the canvas out, so it stays readable. Applied on top of the Global Hover Info Scale.",
+      scope: "client",
+      config: true,
+      type: Boolean,
+      default: false,
+      onChange: () => CPRHoverInfo.invalidateSettingsCache()
+    });
+
     game.settings.register(this.ID, "weaponWordExclusions", {
       name: "Weapon Word Exclusions",
       hint: "Comma-separated list of words to hide weapons containing them (e.g., 'Martial Art, MA:, Unarmed')",
@@ -583,7 +604,15 @@ class CPRHoverInfo {
   static getGridScale() {
     const baseGridSize = 256;
     const currentGridSize = canvas.grid.size || baseGridSize;
-    return Math.max(0.15, Math.min(1.5, currentGridSize / baseGridSize));
+    const gridScale = Math.max(0.15, Math.min(1.5, currentGridSize / baseGridSize));
+    const settings = this.getSettings();
+    const userScale = settings.globalScale || 1;
+    let zoomBoost = 1;
+    if (settings.zoomScale) {
+      const zoom = canvas.stage?.scale?.x || 1;
+      zoomBoost = Math.min(3, Math.max(1, 1 / zoom));
+    }
+    return gridScale * userScale * zoomBoost;
   }
 
   static getWeaponSizeCategory(weapon) {
@@ -689,7 +718,9 @@ class CPRHoverInfo {
           skillBasedInfo: game.settings.get(this.ID, "skillBasedInfo"),
           showTargetLine: game.settings.get(this.ID, "showTargetLine"),
           targetLineOnlyInCombat: game.settings.get(this.ID, "targetLineOnlyInCombat"),
-          sofSupport: game.settings.get(this.ID, "sofSupport")
+          sofSupport: game.settings.get(this.ID, "sofSupport"),
+          globalScale: game.settings.get(this.ID, "globalScale"),
+          zoomScale: game.settings.get(this.ID, "zoomScale")
         };
       } catch (error) {
         console.warn(`${this.ID} | Failed to load settings, using defaults:`, error);
@@ -706,7 +737,9 @@ class CPRHoverInfo {
           skillBasedInfo: true,
           showTargetLine: false,
           targetLineOnlyInCombat: true,
-          sofSupport: false
+          sofSupport: false,
+          globalScale: 1,
+          zoomScale: false
         };
       }
     }
@@ -843,15 +876,20 @@ class CPRHoverInfo {
   }
 
   static getDistance(token1, token2) {
-    if (token1.document) token1 = token1.document;
-    if (token2.document) token2 = token2.document;
+    const doc1 = token1.document || token1;
+    const doc2 = token2.document || token2;
 
-    const horizontal = canvas.grid.measureDistance(token1, token2, { gridSpaces: true });
-    
-    const elevation1 = token1.elevation || 0;
-    const elevation2 = token2.elevation || 0;
+    const p1 = token1.center || { x: doc1.x, y: doc1.y };
+    const p2 = token2.center || { x: doc2.x, y: doc2.y };
+
+    const horizontal = canvas.grid.measurePath
+      ? canvas.grid.measurePath([p1, p2]).distance
+      : canvas.grid.measureDistance(p1, p2, { gridSpaces: true });
+
+    const elevation1 = doc1.elevation || 0;
+    const elevation2 = doc2.elevation || 0;
     const vertical = elevation1 - elevation2;
-    
+
     return Math.round(Math.sqrt(horizontal * horizontal + vertical * vertical));
   }
 

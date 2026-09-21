@@ -1,4 +1,4 @@
-## 1.2
+## 1.3
 - Implemented support for the "Square Grid Diagonals" core setting.
 - Added an adjustable scale override setting. (Per Client)
 - Added an option to autoscale depending on the zoom so the hover info is always readable.
