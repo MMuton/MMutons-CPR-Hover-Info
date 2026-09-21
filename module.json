@@ -1,20 +1,9 @@
 {
-  "id": "mmutons-cpr-hover-info",
-  "title": "MMuton's Cyberpunk RED Hover Info",
-  "description": "Displays weapon, armor and DV information when hovering over tokens",
+  "id": "mmutons-cyberpunk-red-upgraded-grenades",
+  "title": "MMuton's CPR Better Grenades",
+  "description": "Enhanced grenade system for Cyberpunk RED.",
   "author": "MMuton",
-  "version": "1.2.0",
-  "packs": [
-    {
-      "name": "soldier-of-fortune-dv-table",
-      "label": "Soldier of Fortune DV Table",
-      "path": "packs/soldier-of-fortune-dv-table",
-      "type": "Macro"
-    }
-  ],
-  "url": "https://github.com/MMuton/MMutons-CPR-Hover-Info",
-  "manifest": "https://raw.githubusercontent.com/MMuton/MMutons-CPR-Hover-Info/main/module.json",
-  "download": "https://github.com/MMuton/MMutons-CPR-Hover-Info/archive/refs/heads/main.zip",
+  "version": "1.1",
   "compatibility": {
     "minimum": "11",
     "verified": "12",
@@ -26,13 +15,32 @@
         "id": "cyberpunk-red-core",
         "type": "system",
         "compatibility": {
-          "minimum": "0.88.0"
+          "minimum": "0.12.0"
         }
       }
     ],
-    "requires": []
+    "recommends": [
+      {
+        "id": "sequencer",
+        "type": "module",
+        "reason": "Required for explosion, EMP, flashbang, and smoke animations."
+      },
+      {
+        "id": "jb2a_patreon",
+        "type": "module",
+        "reason": "Provides high-quality animation files for grenade effects (Patreon version)."
+      },
+      {
+        "id": "JB2A_DnD5e",
+        "type": "module",
+        "reason": "Provides animation files for grenade effects (free version)."
+      }
+    ]
   },
-  "esmodules": ["scripts/hover-info.js"],
-  "styles": ["styles/settings-menu.css"],
-  "languages": []
+  "esmodules": ["scripts/grenade-handler.js"],
+  "styles": ["styles/grenades.css"],
+  "url": "https://github.com/MMuton/MMutons-Cyberpunk-Red-Better-Grenades",
+  "manifest": "https://raw.githubusercontent.com/MMuton/MMutons-Cyberpunk-Red-Better-Grenades/main/module.json",
+  "download": "https://github.com/MMuton/MMutons-Cyberpunk-Red-Better-Grenades/archive/refs/heads/main.zip",
+  "changelog": "https://raw.githubusercontent.comMMuton/MMutons-Cyberpunk-Red-Better-Grenades/main/CHANGELOG.md"
 }
